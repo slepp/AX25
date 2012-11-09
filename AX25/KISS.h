@@ -11,16 +11,16 @@
 #include "Packet.h"
 
 class KISS : public SoftwareSerial {
-  public:
-    KISS(unsigned char rx, unsigned char tx):SoftwareSerial(rx,tx) {}
-    virtual size_t write(uint8_t);
-    size_t fend() {
-      return SoftwareSerial::write((uint8_t)KISS_FEND);
-    }
-    size_t fesc() {
-      return SoftwareSerial::write((uint8_t)KISS_FESC);
-    }
-    size_t writePacket(Packet *);
+	public:
+	KISS(const unsigned char rx, const unsigned char tx):SoftwareSerial(rx,tx) {}
+	virtual size_t write(uint8_t);
+	inline size_t fend() {
+		return SoftwareSerial::write((uint8_t)KISS_FEND);
+	}
+	inline size_t fesc() {
+		return SoftwareSerial::write((uint8_t)KISS_FESC);
+	}
+	size_t writePacket(Packet *);
 };
 
 #endif

@@ -4,16 +4,16 @@
 #include <SoftwareSerial.h>
 #include "Packet.h"
 
+// Write a byte out to the KISS interface properly encoded
 size_t KISS::write(uint8_t c) {
-  if(c == KISS_FEND || c == KISS_FESC) {
-    SoftwareSerial::write((uint8_t)KISS_FESC);
-    if(c == KISS_FEND)
-      SoftwareSerial::write((uint8_t)KISS_TFEND);
-      else
-      SoftwareSerial::write((uint8_t)KISS_TFESC);
-    return 1;
-  }
-  return SoftwareSerial::write(c);
+	switch(c) {
+		case KISS_FEND:
+			fesc(); return SoftwareSerial::write((uint8_t)KISS_TFEND);
+		case KISS_FESC:
+			fesc(); return SoftwareSerial::write((uint8_t)KISS_TFESC);
+		default:
+			return SoftwareSerial::write(c);
+	}
 }
 
 size_t KISS::writePacket(Packet *p) {
@@ -28,6 +28,5 @@ size_t KISS::writePacket(Packet *p) {
       write((uint8_t)c);
   }
   fend();
-  write('\n');
   return i;
 }

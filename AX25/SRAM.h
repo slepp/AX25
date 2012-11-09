@@ -1,20 +1,4 @@
 /*
-writestream: Setup the SRAM in sequential write mode starting from the passed address.
-Bytes can then be written one byte at a time using RWdata(byte data).
-Each byte is stored in the next location and it wraps around 32767.
-
-readstream:  Setup the SRAM in sequential read mode starting from the passed address.
-Bytes can then be read one byte at a time using  byte RWdata(0).The passed data is irrelavent.
-Each byte is read from the next location and it wraps around 32767.
-
-RWdata:      Write or read a byte at any time from the SRAM.
-If the writesteam is open the passed byte will be written to the current address.
-If the readstream is open the byte from the current address will be returned.
-
-closeRWstream: Use to close the  open read or write stream.
-Dont need when changing between read/write.
-Close before using SPI somewhere else.
-
 digital pin 13    SCK
 digital pin 12    MISO
 digital pin 11    MOSI
@@ -22,6 +6,20 @@ digital pin 10    SS
 */
 #ifndef SRAM_h
 #define SRAM_h
+
+// The size of the chip's SRAM
+// 65536 for 23lc512, 32768 for 23k256, etc
+#define SRAM_SIZE			65536
+// Maximum addressable segment of SRAM
+#define SRAM_MAX_ADDRESS	(SRAM_SIZE - 1)
+// Where to start our dynamic allocation, allowing for some statics
+// This should never be 0, as we use that for NULL
+#define SRAM_HEAP_START		2048
+// Where to stop allocating dynamic memory
+#define SRAM_HEAP_END		SRAM_MAX_ADDRESS
+
+// Allow asynchronous calls to writing SRAM?
+//#define SRAM_ASYNC
 
 #define setupSPI SPCR = 0x50 | _BV(CPHA) /*| _BV(SPIE)*/; SPSR &= ~_BV(SPI2X) //Master mode, MSB first, SCK phase low, SCK idle low, clock/4
 #define setupDDRB DDRB |= 0x2c  //set  SCK(13) MOSI(11) and SS as output
@@ -46,9 +44,6 @@ class SRAMclass
 	void writeByte(const sramPtr_t, const unsigned char);
 	void writeBuffer(const sramPtr_t, const unsigned char *, const unsigned char);
 	void writePage(const sramPtr_t, const unsigned char *);
-	private:
-	void endStream();
-	public:
 	void startReadStream(const sramPtr_t);
 	unsigned char readStream();
 	unsigned char readByte(const sramPtr_t);
@@ -56,6 +51,7 @@ class SRAMclass
 	void readPage(const sramPtr_t, unsigned char *);
 	SRAMByte operator[](const unsigned short);
 	private:
+	void endStream(); // Private so we don't interfere
 	inline byte Rdata();
 	inline void Wdata(const byte);
 	inline void writeStatus(const unsigned char);
@@ -67,6 +63,7 @@ class SRAMclass
 
 extern SRAMclass SRAM;
 
+// SRAM Bytes are really here just for convenience of dynamically allocated chunks of RAM
 class SRAMByte {
 	public:
 	SRAMByte(const sramPtr_t p, const unsigned char c):position(p),changed(0),value(c) {};
@@ -99,9 +96,6 @@ class SRAMByte {
 	bool changed;
 	unsigned char value;
 };
-
-#define heapStart 64
-#define heapEnd 32768
 
 class SRAMMemory {
 	public:

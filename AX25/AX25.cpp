@@ -32,6 +32,11 @@ Radio radio(7);
 // GPS routines
 GPS gps;
 
+unsigned char unprotoDigis[][7] = {
+	{"WIDE1 "},
+	{0x0}
+};
+
 static unsigned char lastEEPROMRevision = 0;
 
 #include <avr/eeprom.h>
@@ -54,14 +59,7 @@ struct __eeprom_data {
   long kissBaud;
 };
 
-unsigned char unprotoDigis[][7] = {
-	{"WIDE1 "},
-	{0x0}
-};
-
 // EEPROM defaults
-//#undef PROGMEM
-//#define PROGMEM __attribute__((section(".progmem.data")))
 const uint8_t def_ver PROGMEM = EEPROM_VERSION;
 const uint8_t def_revision PROGMEM = 0;
 const char  def_srcCallsign[6] PROGMEM = {'V','E','6','S','L','P'};
@@ -72,8 +70,11 @@ const uint16_t def_txInterval PROGMEM = (uint16_t)1000;
 const uint32_t def_serialBaud PROGMEM = (uint32_t)57600;
 const uint32_t def_kissBaud PROGMEM = (uint32_t)4800;
 
+// Store the current device configuration
 static struct __eeprom_data configData;
 
+// Compare versions of EEPROM config data and compiled variant,
+// and reprogram as necessary.
 void loadConfigData() {
   eeprom_read(configData.ver, ver);
   if(configData.ver == EEPROM_VERSION) {
@@ -114,6 +115,7 @@ void loadConfigData() {
   }
 }
 
+// Simply output a string from program memory to the serial port
 void cmdSerialOut(PGM_P p) {
 	register uint8_t c;
 	while((c = pgm_read_byte(p++)) != '\0') {
@@ -126,6 +128,7 @@ void cmdSerialOut(PGM_P p) {
 // Set bit
 #define sbi(sfr, bit) (_SFR_BYTE(sfr) |= _BV(bit))
 
+// Set this device's own callsign
 void cmdSetMyCall() {
 	char *arg;
 	arg = sCmd.next();
@@ -147,6 +150,7 @@ void cmdSetMyCall() {
 	}
 }
 
+// Set the default beacon interval
 void cmdSetInterval() {
     int interval = atoi(sCmd.next());
     if(interval < 1000)
@@ -158,15 +162,21 @@ void cmdSetInterval() {
 	Serial.println(interval);
 }
 
+// Set the destination callsign
 void cmdSetDstCall() {
 	
 }
 
+// Prototype for the packet header creation
 static Packet *ax25MakePacketHeader(const char dst[6], const unsigned char dstSSID,
-const char src[6], const unsigned char srcSSID,
-const unsigned int len,
-const unsigned char digis[][7]);
+									const char src[6], const unsigned char srcSSID,
+									const unsigned int len,
+									const unsigned char digis[][7]);
+
+// We'll store our serial output packet here received via TX
 Packet *serTxPacket = NULL;
+
+// Start collecting bytes for serTxPacket
 void cmdTx() {
 	cmdSerialOut(PSTR("Enter your packet:"));
 	Serial.println();
@@ -175,10 +185,11 @@ void cmdTx() {
 	Serial.flush();
 }
 
+// Unknown command handler, just reply we don't know.
 void cmdUnknown(const char *cmd) {
 	cmdSerialOut(PSTR("Unknown command '"));
 	Serial.print(cmd);
-	Serial.print('\'');
+	Serial.println('\'');
 }
 
 void setup()  {

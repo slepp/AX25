@@ -37,34 +37,47 @@ digital pin 10    SS
 #define MODE_PAGE 0b10000001
 #define MODE_SEQN 0b01000001
 
+#ifdef SRAM_ASYNC
 volatile bool SRAMdone = true;
+#endif
 
 // Wait for a result when reading
 inline byte SRAMclass::Rdata()
 {
 	unsigned char rVal;
+#ifndef SRAM_ASYNC
 	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
 		++lastPos;
-		//while(!SRAMdone);
 		SPDR = 0xFF;
 		while (!(SPSR & _BV(SPIF)));
-		//SRAMdone = false;
-		//while(!SRAMdone);
 		rVal = SPDR;
 	}
+#else // We will use ASYNC methods
+	++lastPos;
+	while(!SRAMdone);
+	SPDR = 0xFF;
+	while(!SRAMdone);
+	rVal = SPDR;
+	SRAMdone = false;
+#endif
 	return rVal;
 }
 
 // Let writes happen while we continue
 inline void SRAMclass::Wdata(const byte data)
 {
+#ifndef SRAM_ASYNC
 	ATOMIC_BLOCK(ATOMIC_RESTORESTATE){
 		++lastPos;
-		//while (!SRAMdone);
 		SPDR = data;
 		while (!(SPSR & _BV(SPIF)));
-		//SRAMdone = false;
 	}
+#else
+	++lastPos;
+	while(!SRAMdone);
+	SRAMdone = false;
+	SPDR = data;
+#endif
 }
 
 inline void SRAMclass::writeStatus(const unsigned char b) {
@@ -100,10 +113,12 @@ void SRAMclass::begin()  //constructor
 	setupDDRB;
 	setupSPI;
 	digitalWrite(12, HIGH); // Set MISO pull up high
+#ifdef SRAM_ASYNC
 	SRAMdone = true;
+#endif
 	writeStatus(MODE_SEQN);
 	startWriteStream(0x0);
-	for(unsigned short i = 0; i < 32768; ++i)
+	for(unsigned long i = 0; i < SRAM_MAX_ADDRESS; ++i)
 	Wdata(0x0);
 	deselectSS;
 	lastMode = MODE_SEQN;
@@ -276,9 +291,9 @@ sramPtr_t SRAMMemory::allocate(sramPtr_t size) {
 
 		//printf("No available slots\n");
 		if(lastHeap == 0) {
-			lastHeap = heapStart;
+			lastHeap = SRAM_HEAP_START;
 		}
-		sramPtr_t avail = heapEnd - lastHeap;
+		sramPtr_t avail = SRAM_HEAP_END - lastHeap;
 		if(avail >= size && avail >= size + sizeof(sramPtr_t)) {
 			fp1 = lastHeap;
 			lastHeap += size + sizeof(sramPtr_t);
@@ -339,8 +354,9 @@ void SRAMMemory::free(sramPtr_t idx) {
 	} // End of atomic block		
 }
 
+#ifdef SRAM_ASYNC
 ISR(SPI_STC_vect, ISR_NAKED) {
-	// Set SRAMdone to 1..
+	// Set SRAMdone to 1, quickly
 	__asm__ __volatile__ (
 		"push r16"			"\n\t"
 		"ldi r16, 0x01"		"\n\t"
@@ -348,5 +364,5 @@ ISR(SPI_STC_vect, ISR_NAKED) {
 		"pop r16"			"\n\t"
 		"reti"				"\n\t"
 	);
-	//SRAMdone = true;
 }
+#endif
