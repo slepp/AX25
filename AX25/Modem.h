@@ -5,36 +5,31 @@
 #include "AFSKDecode.h"
 #include "Packet.h"
 
-// This is the main "modem" and handles
-// all the basic routines needed for IO
-
 extern volatile unsigned long lastTx;
 extern volatile unsigned long lastTxEnd;
 extern volatile unsigned long lastRx;
 
 class Modem {
 public:
-  void start(); // Start the timers
-  void timer(); // Process a timer event
+  void start();
+  void timer();
   inline bool read() {
     return decoder.read();
   }
   inline bool txReady() volatile {
-    if(encoder.isDone() && encoder.hasPackets())
-      return true;
-    return false;
+    return encoder.isDone() && encoder.hasPackets();
   }
   inline bool isDone() volatile { return encoder.isDone(); }
   inline bool txStart() {
     if(decoder.isReceiving()) {
       encoder.setRandomWait();
       return false;
-    } 
+    }
     return encoder.start();
   }
   inline bool putTXPacket(Packet *packet) {
     bool ret = encoder.putPacket(packet);
-    if(!ret) // No room?
+    if(!ret)
       PacketBuffer::freePacket(packet);
     return ret;
   }
@@ -45,8 +40,8 @@ public:
     return decoder.packetCount();
   }
 private:
-  unsigned long lastTx;
-  unsigned long lastRx;
+  // Note: lastTx/lastRx are extern globals, not members - they are
+  // shared between the ISR (encoder/decoder) and the main loop.
   AFSKEncode encoder;
   AFSKDecode decoder;
 };

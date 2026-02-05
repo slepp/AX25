@@ -3,6 +3,7 @@
 
 #include <Arduino.h>
 #include "Packet.h"
+#include "config.h"
 
 class AFSKEncode {
 public:
@@ -10,18 +11,18 @@ public:
     randomWait = 1000; // At the very begin, wait at least one second
     sending = false;
     done = true;
-    packet = 0x0;
+    packet = nullptr;
     currentBytePos = 0;
   }
   void setFreq(unsigned long, byte);
-  volatile inline bool isSending() volatile { 
-    return sending; 
+  volatile inline bool isSending() volatile {
+    return sending;
   }
-  volatile inline bool isDone() volatile { 
-    return done; 
+  volatile inline bool isDone() volatile {
+    return done;
   }
-  volatile inline bool hasPackets() volatile { 
-    return (pBuf.count() > 0); 
+  volatile inline bool hasPackets() volatile {
+    return (pBuf.count() > 0);
   }
   inline bool putPacket(Packet *packet) {
     return pBuf.putPacket(packet);
@@ -48,11 +49,8 @@ private:
   unsigned char currentBytePos;
   volatile unsigned long randomWait;
   volatile bool done;
-  // Phase accumulator, 32 bits, we'll use ACCUMULATOR_BITS of it
   unsigned long accumulator;
-  // Current radian step for the accumulator
   unsigned long rStep;
 };
 
 #endif
-

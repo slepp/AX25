@@ -4,11 +4,9 @@
 #include <Arduino.h>
 #include "Packet.h"
 #include "SimpleFIFO.h"
+#include "config.h"
 
-#define SAMPLERATE 9600
-#define BITRATE    1200
-
-#define SAMPLEPERBIT (SAMPLERATE / BITRATE)
+#define SAMPLEPERBIT (AFSK_REFCLK / AFSK_BAUD)
 
 #define RX_FIFO_LEN 16
 
@@ -46,7 +44,7 @@ public:
 private:
   Packet *currentPacket;
   SimpleFIFO<int8_t,SAMPLEPERBIT/2+1> delay_fifo;
-  SimpleFIFO<uint8_t,RX_FIFO_LEN> rx_fifo; // This should be drained fairly often
+  SimpleFIFO<uint8_t,RX_FIFO_LEN> rx_fifo;
   int16_t iir_x[2];
   int16_t iir_y[2];
   uint8_t sampled_bits;
